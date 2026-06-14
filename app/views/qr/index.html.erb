@@ -1,0 +1,30 @@
+<div class="qr-page">
+
+  <% if @order.present? %>
+
+    <h1>🐙 注文番号 <%= @order.number %></h1>
+
+    <% @order.lottery_tickets.each_with_index do |ticket, index| %>
+
+      <h2>抽選券 <%= index + 1 %></h2>
+
+      <div class="qr-box-large">
+        <%= qr_code_as_svg("#{@lottery_base_url}/lottery/#{ticket.token}") %>
+      </div>
+      <p class="qr-url"><%= "#{@lottery_base_url}/lottery/#{ticket.token}" %></p>
+
+    <% end %>
+
+  <% else %>
+
+    <h1>注文待ちです</h1>
+
+  <% end %>
+
+</div>
+
+<script>
+  setTimeout(() => {
+    location.reload();
+  }, 2000);
+</script>

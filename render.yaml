@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: takoyaki-lottery
+    env: docker
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: RAILS_ENV
+        value: production
+      - key: RAILS_LOG_TO_STDOUT
+        value: enabled
+      - key: RAILS_SERVE_STATIC_FILES
+        value: enabled
+      - key: LOTTERY_BASE_URL
+        value: https://takoyaki-lottery.onrender.com
+      - key: SECRET_KEY_BASE
+        generateValue: true

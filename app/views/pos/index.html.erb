@@ -1,0 +1,165 @@
+<div class="pos-layout">
+  <div class="menu-area">
+    <h1>🐙 たこ焼きPOS</h1>
+
+    <div class="menu-grid">
+      <button class="menu-btn" onclick="openTakoyakiModal()">たこ焼き6個<br><span>単品500円 / セット600円</span></button>
+      <button class="menu-btn" onclick="openDrinkModal('ドリンク', 150)">ドリンク<br><span>150円</span></button>
+      <button class="menu-btn free" onclick="openDrinkModal('無料ドリンク', 0)">無料ドリンク<br><span>0円</span></button>
+    </div>
+  </div>
+
+  <div class="cart-area">
+    <h2>🛒 カート</h2>
+    <div id="cart-items"></div>
+    <div class="cart-total">合計：<span id="total-price">0</span>円</div>
+
+<div class="payment-box">
+  <h2>会計</h2>
+
+  <label>預かり金</label>
+  <input
+    type="number"
+    id="received-money"
+    placeholder="例：1000"
+    oninput="updateChange()"
+  >
+
+  <div class="change-display">
+    おつり：<span id="change-money">0</span>
+  </div>
+</div>
+
+<%= form_with url: "/pos/order", method: :post, local: true, data: { turbo: false } do %>
+  <input type="hidden" name="cart_json" id="cart-json">
+  <input type="hidden" name="total_price" id="total-price-input">
+  <input type="hidden" name="ticket_count" id="ticket-count-input">
+
+  <button type="submit" class="order-submit-btn" onclick="prepareOrderData()">
+    オーダー確定
+  </button>
+<% end %>
+  </div>
+</div>
+
+<div id="modal" class="modal hidden">
+  <div class="modal-content">
+    <h2 id="modal-title"></h2>
+    <div id="modal-body"></div>
+    <button class="close-btn" onclick="closeModal()">閉じる</button>
+  </div>
+</div>
+
+<script>
+let cart = [];
+
+const drinks = ["コーラ", "緑茶", "メロンソーダ", "カルピス"];
+
+function openTakoyakiModal() {
+  document.getElementById("modal-title").innerText = "たこ焼き6個";
+  document.getElementById("modal-body").innerHTML = `
+    <button class="select-btn" onclick="addItem('たこ焼き6個 単品', 500)">単品 500円</button>
+    <button class="select-btn" onclick="selectSetDrink()">セット 600円</button>
+  `;
+  openModal();
+}
+
+function selectSetDrink() {
+  document.getElementById("modal-title").innerText = "セットのドリンクを選択";
+  document.getElementById("modal-body").innerHTML = drinks.map(drink => `
+    <button class="select-btn" onclick="addItem('たこ焼きセット（${drink}）', 600)">
+      ${drink}
+    </button>
+  `).join("");
+}
+
+function openDrinkModal(label, price) {
+  document.getElementById("modal-title").innerText = label;
+  document.getElementById("modal-body").innerHTML = drinks.map(drink => `
+    <button class="select-btn" onclick="addItem('${label}（${drink}）', ${price})">
+      ${drink}
+    </button>
+  `).join("");
+  openModal();
+}
+
+function addItem(name, price) {
+  cart.push({ name, price });
+  updateCart();
+  closeModal();
+}
+
+function updateCart() {
+  const cartItems = document.getElementById("cart-items");
+  cartItems.innerHTML = "";
+
+  let total = 0;
+
+  cart.forEach((item, index) => {
+    total += item.price;
+
+    cartItems.innerHTML += `
+      <div class="cart-item">
+        <div>
+          <strong>${item.name}</strong><br>
+          ${item.price}円
+        </div>
+        <button onclick="removeItem(${index})">削除</button>
+      </div>
+    `;
+  });
+
+  document.getElementById("total-price").innerText = total;
+
+updateChange();
+
+}
+
+function removeItem(index) {
+  cart.splice(index, 1);
+  updateCart();
+}
+
+function openModal() {
+  document.getElementById("modal").classList.remove("hidden");
+}
+
+function closeModal() {
+  document.getElementById("modal").classList.add("hidden");
+}
+
+// ここから追加
+function prepareOrderData() {
+  const total = cart.reduce((sum, item) => sum + item.price, 0);
+
+  const ticketCount = cart.filter(item =>
+    item.name.includes("たこ焼きセット")
+  ).length;
+
+  document.getElementById("cart-json").value =
+    JSON.stringify(cart);
+
+  document.getElementById("total-price-input").value = total;
+
+  document.getElementById("ticket-count-input").value = ticketCount;
+}
+// ここまで追加
+
+function updateChange() {
+  const total = cart.reduce((sum, item) => sum + item.price, 0);
+  const received = Number(
+    document.getElementById("received-money").value || 0
+  );
+
+  const result = document.getElementById("change-money");
+
+  if (received === total && total > 0) {
+    result.innerText = "ちょうど";
+  } else if (received > total) {
+    result.innerText = `${received - total}円`;
+  } else {
+    result.innerText = "不足";
+  }
+}
+
+</script>

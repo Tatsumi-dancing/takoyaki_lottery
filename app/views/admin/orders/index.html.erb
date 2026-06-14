@@ -1,0 +1,48 @@
+<div class="admin-screen">
+  <header class="admin-header">
+    <div>
+      <h1>🐙 店員オペ画面</h1>
+      <p>注文作成・受取管理</p>
+    </div>
+
+    <%= button_to "＋ 新規注文", admin_orders_path, method: :post, class: "new-order-btn" %>
+  </header>
+
+  <div class="admin-orders">
+    <% @orders.each do |order| %>
+      <div class="admin-card <%= order.status %>">
+        <div class="order-number">No.<%= order.number %></div>
+
+        <div class="order-status">
+          <%= order.waiting? ? "お待ち" : "受取可能" %>
+        </div>
+
+        <div class="order-items">
+          <%= order.items_text.presence || "注文内容なし" %>
+        </div>
+
+        <div class="order-prize">
+  🎁
+  <% if order.lottery_tickets.any? %>
+    <%= order.lottery_tickets.map(&:prize).join("、") %>
+  <% else %>
+    抽選なし
+  <% end %>
+</div>
+
+        <% unless order.completed? %>
+          <%= button_to next_status_label(order),
+            admin_order_path(order),
+            method: :patch,
+            class: "action-btn next-btn" %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script>
+  setTimeout(() => {
+    location.reload();
+  }, 3000);
+</script>

@@ -1,0 +1,32 @@
+<div class="qr-page">
+  <h1>🐙 注文番号 <%= @order.number %></h1>
+
+  <% if @order.lottery_tickets.any? %>
+
+    <% @order.lottery_tickets.each_with_index do |ticket, index| %>
+
+      <h2>抽選券 <%= index + 1 %> 枚目</h2>
+
+      <div class="qr-box-large">
+        <%= qr_code_as_svg("#{@lottery_base_url}/lottery/#{ticket.token}") %>
+      </div>
+      <p class="qr-url"><%= "#{@lottery_base_url}/lottery/#{ticket.token}" %></p>
+
+    <% end %>
+
+  <% else %>
+
+    <h2>この注文は抽選対象外です</h2>
+
+  <% end %>
+
+  <p>
+    スマホで読み取って抽選してください
+  </p>
+</div>
+
+<script>
+  setTimeout(() => {
+    location.reload();
+  }, 3000);
+</script>

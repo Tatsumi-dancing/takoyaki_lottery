@@ -1,0 +1,283 @@
+<div class="lottery-game">
+  <h1>🐙 たこ焼き抽選</h1>
+  <p class="order-no">注文番号 No.<%= @ticket.order.number %></p>
+
+  <div id="cook-screen">
+    <h2>たこ焼きを回して焼こう！</h2>
+
+  <div class="takoyaki-pan">
+  <div id="steam">☁️ ☁️ ☁️</div>
+
+  <img id="hand-pick" src="<%= asset_path('hand_pick.png') %>">
+  <img id="takoyaki-ball" src="<%= asset_path('tako_chan.png') %>">
+</div>
+
+    <div class="gauge-wrap">
+      <div id="gauge"></div>
+    </div>
+
+    <div id="percent">0%</div>
+    <p id="cook-text">指でぐるぐるなぞってね！</p>
+  </div>
+
+  <div id="result-screen" style="display:none;">
+    <h2>🎉 結果発表 🎉</h2>
+    <div class="result-prize"><%= @ticket.prize %></div>
+    <p>この画面を店員に見せてください</p>
+  </div>
+
+  <button id="skip-btn">スキップする</button>
+
+  <div id="jackpot-effect" class="effect-overlay" aria-hidden="true">
+    <div class="effect-flash"></div>
+    <div class="effect-shock effect-shock-a">⚡</div>
+    <div class="effect-shock effect-shock-b">⚡</div>
+    <div class="effect-shock effect-shock-c">⚡</div>
+    <div class="effect-stage">
+      <div id="effect-label" class="effect-label">たこ焼きチャンス</div>
+      <div id="effect-title" class="effect-title">ズーム中...</div>
+      <div id="effect-subtitle" class="effect-subtitle">運命の一球が飛んでいく...</div>
+      <div id="effect-god" class="effect-god">🐙</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let power = 0;
+let started = false;
+let audioContext;
+
+const ball = document.getElementById("takoyaki-ball");
+const hand = document.getElementById("hand-pick");
+const gauge = document.getElementById("gauge");
+const percent = document.getElementById("percent");
+const cookText = document.getElementById("cook-text");
+const effect = document.getElementById("jackpot-effect");
+const effectLabel = document.getElementById("effect-label");
+const effectTitle = document.getElementById("effect-title");
+const effectSubtitle = document.getElementById("effect-subtitle");
+const effectGod = document.getElementById("effect-god");
+
+const takoChan = "<%= asset_path('tako_chan.png') %>";
+const half = "<%= asset_path('takoyaki_half.png') %>";
+const done = "<%= asset_path('takoyaki_done.png') %>";
+const prize = "<%= j @ticket.prize.to_s %>";
+
+function addPower(e) {
+  if (started) return;
+
+  power += 2;
+  if (power > 100) power = 100;
+
+  gauge.style.width = power + "%";
+  percent.innerText = power + "%";
+
+  const rotate = power * 18;
+
+  ball.style.transform =
+    `rotate(${rotate}deg) scale(${1 + power / 350})`;
+
+  moveHand(e);
+  playCookSound(power);
+
+  if (power >= 30 && power < 70) {
+    ball.src = half;
+    cookText.innerText = "半生になってきた！";
+  }
+
+  if (power >= 70) {
+    ball.src = done;
+    cookText.innerText = "いい感じに焼けてきた！";
+  }
+
+  if (power >= 100) {
+    startFinal();
+  }
+}
+
+ball.addEventListener("touchmove", addPower);
+ball.addEventListener("mousemove", addPower);
+
+function startFinal() {
+  started = true;
+
+  ball.src = done;
+  ball.style.transform = "rotate(0deg) scale(1.15)";
+  cookText.innerText = "焼き上がり！！";
+  vibrate([90, 60, 120]);
+  playTone(880, 0.1, "triangle");
+  playTone(1320, 0.12, "triangle", 0.1);
+
+  document.getElementById("steam").classList.add("steam-on");
+
+  setTimeout(() => {
+    cookText.innerText = "たこ焼き発射！！";
+    ball.classList.add("fly");
+    vibrate(220);
+    playTone(300, 0.1, "sine");
+    playTone(620, 0.18, "sine", 0.08);
+
+    setTimeout(() => {
+      startJackpotEffect();
+    }, 1300);
+  }, 900);
+}
+
+function startJackpotEffect() {
+  const mode = effectMode(prize);
+
+  effectLabel.innerText = mode.label;
+  effectTitle.innerText = mode.title;
+  effectSubtitle.innerText = mode.subtitle;
+  effectGod.innerText = mode.icon;
+  effect.className = `effect-overlay effect-on ${mode.className}`;
+  effect.setAttribute("aria-hidden", "false");
+  document.getElementById("cook-screen").classList.add("zoom-out");
+  document.getElementById("skip-btn").style.display = "none";
+
+  vibrate(mode.vibration);
+  playEffectSound(mode);
+
+  setTimeout(() => {
+    showResult();
+  }, mode.duration);
+}
+
+function showResult() {
+  document.getElementById("cook-screen").style.display = "none";
+  document.getElementById("result-screen").style.display = "block";
+  document.getElementById("skip-btn").style.display = "none";
+  effect.className = "effect-overlay";
+  effect.setAttribute("aria-hidden", "true");
+}
+
+document.getElementById("skip-btn").addEventListener("click", showResult);
+
+function moveHand(e) {
+  let x;
+  let y;
+
+  if (e.touches && e.touches.length > 0) {
+    x = e.touches[0].clientX;
+    y = e.touches[0].clientY;
+  } else {
+    x = e.clientX;
+    y = e.clientY;
+  }
+
+  const pan = document.querySelector(".takoyaki-pan");
+  const rect = pan.getBoundingClientRect();
+
+  const localX = x - rect.left;
+  const localY = y - rect.top;
+
+  hand.style.left = `${localX - 40}px`;
+  hand.style.top = `${localY - 40}px`;
+}
+
+function effectMode(value) {
+  if (value.includes("1パック") || value.includes("1繝代ャ繧ｯ")) {
+    return {
+      className: "god-mode",
+      label: "2%の奇跡",
+      title: "タコ神降臨",
+      subtitle: "これは...伝説の一皿だ！",
+      icon: "🐙",
+      duration: 3300,
+      vibration: [120, 70, 120, 70, 500]
+    };
+  }
+
+  if (value.includes("ドリンク") || value.includes("繝峨Μ繝ｳ繧ｯ")) {
+    return {
+      className: "hot-mode",
+      label: "激アツ",
+      title: "キュイン！！",
+      subtitle: "光った！これは強い！",
+      icon: "✨",
+      duration: 2800,
+      vibration: [80, 40, 80, 40, 260]
+    };
+  }
+
+  if (value.includes("+2")) {
+    return {
+      className: "hot-mode",
+      label: "大チャンス",
+      title: "追いたこ発生",
+      subtitle: "さらにもう一段階のうれしさ！",
+      icon: "🔥",
+      duration: 2600,
+      vibration: [70, 40, 180]
+    };
+  }
+
+  if (value.includes("+1")) {
+    return {
+      className: "normal-mode",
+      label: "チャンス",
+      title: "もう一個追加！",
+      subtitle: "焼きたてボーナス入りました！",
+      icon: "🎁",
+      duration: 2300,
+      vibration: [60, 40, 120]
+    };
+  }
+
+  return {
+    className: "normal-mode",
+    label: "結果発表",
+    title: "運命の着地",
+    subtitle: "たこ焼きの行方は...",
+    icon: "🎰",
+    duration: 2200,
+    vibration: 120
+  };
+}
+
+function vibrate(pattern) {
+  if (navigator.vibrate) {
+    navigator.vibrate(pattern);
+  }
+}
+
+function playCookSound(currentPower) {
+  if (currentPower % 12 !== 0) return;
+  playTone(180 + currentPower * 2, 0.035, "sawtooth", 0, 0.02);
+}
+
+function playEffectSound(mode) {
+  const notes = mode.className === "god-mode"
+    ? [220, 330, 440, 660, 990, 1320]
+    : mode.className === "hot-mode"
+      ? [660, 990, 1320, 1760]
+      : [392, 523, 659];
+
+  notes.forEach((note, index) => {
+    playTone(note, 0.14, "square", index * 0.12);
+  });
+}
+
+function playTone(frequency, duration, type = "sine", delay = 0, volume = 0.08) {
+  try {
+    audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const startAt = audioContext.currentTime + delay;
+
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, startAt);
+    gain.gain.setValueAtTime(0.001, startAt);
+    gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, startAt + duration);
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start(startAt);
+    oscillator.stop(startAt + duration + 0.03);
+  } catch (_error) {
+    // Some browsers block audio until the first user gesture. The game still works without sound.
+  }
+}
+
+</script>
