@@ -3,6 +3,8 @@ Rails.application.routes.draw do
   post "/pos/order", to: "pos#create"
 
   root "lottery#index"
+  get "/manifest.json", to: "rails/pwa#manifest", as: :pwa_manifest
+get "/service-worker.js", to: "rails/pwa#service_worker", as: :pwa_service_worker
 
   get  "/lottery/:token", to: "lottery#show"
   post "/lottery/:token/draw", to: "lottery#draw"
